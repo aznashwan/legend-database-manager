@@ -68,15 +68,12 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
 
     def _set_stored_defaults(self) -> None:
         self._stored.set_default(log_level="DEBUG")
-        self._stored.set_default(mongodb_credentials={})
+        self._stored.set_default(mongodb_credentials_json="{}")
 
     @_logged_charm_entry_point
     def _on_config_changed(self, _) -> None:
-        """Reacts to configuration changes to the service by:
-        - regenerating the JSON config for the Engine service
-        - adding it via Pebble
-        - instructing Pebble to restart the Engine service
-        """
+        # NOTE(aznashwan): this charm does not yet have any config options:
+        pass
 
     @_logged_charm_entry_point
     def _on_db_relation_joined(self, event: charm.RelationJoinedEvent):
@@ -117,23 +114,29 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
             databases)
         # NOTE(aznashwan): we hackily add the databases in here too:
         mongo_creds['databases'] = databases
-        self._stored.mongodb_credentials = mongo_creds
+        # NOTE: We serialize the creds into JSON here to avoid having to
+        # process the `self._stored.mongodb_credentials_json` (which will
+        # be of the unserializable `StoredDict` type) later:
+        self._stored.mongodb_credentials_json = json.dumps(mongo_creds)
 
         self.unit.status = model.ActiveStatus(
             "Ready to be related to Legend components.")
 
     @_logged_charm_entry_point
     def _on_legend_db_relation_joined(self, event: charm.RelationJoinedEvent):
-        mongo_creds = self._stored.mongodb_credentials
+        mongo_creds = json.loads(str(self._stored.mongodb_credentials_json))
         if not mongo_creds:
             self.unit.status = model.BlockedStatus(
                 "MongoDB relation is required to pass on creds to Legend "
                 "components.")
             return
 
-        rel_id = event.relation.id
-        rel = self.framework.model.get_relation("legend-db", rel_id)
-        rel.data[self.app] = json.dumps({"legend-db-connection": mongo_creds})
+        rel = event.relation
+        rel.data[self.app]["legend-db-connection"] = json.dumps(
+            mongo_creds)
+        LOG.debug(
+            "###### Returned following JSON data for DB connection "
+            "as part of relation: %s", mongo_creds)
 
     @_logged_charm_entry_point
     def _on_legend_db_relation_changed(

@@ -1,0 +1,33 @@
+# Copyright 2021 Canonical
+# See LICENSE file for licensing details.
+
+name: legend-database-manager
+display-name: FINOS Legend Database Manager
+description: |
+  Charm which manages MongoDB database creation and sharing for Legend components.
+summary: |
+  Charm which manages MongoDB database creation and sharing for Legend components.
+
+requires:
+  db:
+    interface: mongodb_datastore
+    limit: 1
+    optional: false
+    scope: global
+
+provides:
+  legend-db:
+    interface: legend_mongodb
+    scope: global
+
+# NOTE(aznashwan, 13/09/2021): despite this charm not running any actual
+# workload (all actions are within the charm code itself), we are forced to
+# deploy a dummy workload container:
+containers:
+  dbman-noop:
+    resource: dbamn-noop-image
+
+resources:
+  dbamn-noop-image:
+    type: oci-image
+    description: OCI image for the no-op container.

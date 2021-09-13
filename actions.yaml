@@ -1,0 +1,5 @@
+# Copyright 2021 Canonical
+# See LICENSE file for licensing details.
+
+# TODO(aznashwan):
+# add utility actions like returning the Mongo creds to the user

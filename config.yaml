@@ -1,0 +1,11 @@
+# Copyright 2021 Canonical
+# See LICENSE file for licensing details.
+
+# TODO(aznashwan): offer ability to directly pass creds/params to an existing
+# MongoDB in case users would like to use one external to Juju
+
+options:
+  database-name:
+    type: string
+    default: Legend
+    description: The name of the Mongo database to create.

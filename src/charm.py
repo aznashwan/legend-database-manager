@@ -5,6 +5,7 @@
 """ Module defining a Charm providing database management for FINOS Legend. """
 
 import functools
+import json
 import logging
 
 from ops import charm
@@ -55,15 +56,16 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
 
         # Legend component relation events:
         self.framework.observe(
-            self.on["legend_db"].relation_joined,
+            self.on["legend-db"].relation_joined,
             self._on_legend_db_relation_joined)
         self.framework.observe(
-            self.on["legend_db"].relation_changed,
+            self.on["legend-db"].relation_changed,
             self._on_legend_db_relation_changed)
 
-        # Set blocked status un MongoDB is realted:
-        self.unit.status = model.BlockedStatus(
-            "Requires relating to MongoDB.")
+        # Set blocked status until MongoDB is realted:
+        if not self.unit.status:
+            self.unit.status = model.BlockedStatus(
+                "Requires relating to MongoDB.")
 
     def _set_stored_defaults(self) -> None:
         self._stored.set_default(log_level="DEBUG")
@@ -131,8 +133,8 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
             return
 
         rel_id = event.relation.id
-        rel = self.framework.model.get_relation("legend_db", rel_id)
-        rel.data[self.app]['legend_db'] = mongo_creds
+        rel = self.framework.model.get_relation("legend-db", rel_id)
+        rel.data[self.app] = json.dumps({"legend-db-connection": mongo_creds})
 
     @_logged_charm_entry_point
     def _on_legend_db_relation_changed(

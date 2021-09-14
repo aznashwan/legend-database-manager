@@ -1,4 +1,1 @@
-# git+https://github.com/canonical/operator.git
-# NOTE(aznashwan 13/09/21): installing from the second-last git commit which
-# allowed the MongoConsumer lib to work:
-git+https://github.com/canonical/operator.git@2875e73e3cacb3b0aa9bbf96524b9b4e7f23b67f
+git+https://github.com/canonical/operator.git

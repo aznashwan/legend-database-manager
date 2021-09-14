@@ -43,8 +43,7 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
         self._set_stored_defaults()
 
         # MongoDB consumer setup:
-        self._mongodb_consumer = mongodb.MongoConsumer(
-            self, "db", {"mongodb": ">=4.0"}, multi=False)
+        self._mongodb_consumer = mongodb.MongoConsumer(self, "db")
 
         # Mongo relation lifecycle events:
         self.framework.observe(

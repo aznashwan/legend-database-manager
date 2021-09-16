@@ -4,7 +4,6 @@
 
 """ Module defining a Charm providing database management for FINOS Legend. """
 
-import functools
 import json
 import logging
 
@@ -14,21 +13,10 @@ from ops import main
 from ops import model
 
 from charms.mongodb_k8s.v0 import mongodb
+from charms.finos_legend_db_k8s.v0 import legend_database
 
-LOG = logging.getLogger(__name__)
 
-
-def _logged_charm_entry_point(fun):
-    """ Add logging for method call/exits. """
-    @functools.wraps(fun)
-    def _inner(*args, **kwargs):
-        LOG.info(
-            "### Initiating Legend DBAdmin charm call to '%s'", fun.__name__)
-        res = fun(*args, **kwargs)
-        LOG.info(
-            "### Completed Legend DBAdmin charm call to '%s'", fun.__name__)
-        return res
-    return _inner
+logger = logging.getLogger(__name__)
 
 
 class LegendDatabaseManagerCharm(charm.CharmBase):
@@ -44,6 +32,9 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
 
         # MongoDB consumer setup:
         self._mongodb_consumer = mongodb.MongoConsumer(self, "db")
+
+        # LDB library setup:
+        self._legend_db_consumer = legend_database.LegendDatabaseConsumer(self)
 
         # Mongo relation lifecycle events:
         self.framework.observe(
@@ -68,77 +59,67 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
 
     def _set_stored_defaults(self) -> None:
         self._stored.set_default(log_level="DEBUG")
-        self._stored.set_default(mongodb_credentials_json="{}")
+        self._stored.set_default(legend_db_conn_json="{}")
 
-    @_logged_charm_entry_point
     def _on_config_changed(self, _) -> None:
         # NOTE(aznashwan): this charm does not yet have any config options:
         pass
 
-    @_logged_charm_entry_point
     def _on_db_relation_joined(self, event: charm.RelationJoinedEvent):
         self.unit.status = model.WaitingStatus(
             "Waiting for MongoDB database creation.")
 
-    @_logged_charm_entry_point
     def _on_db_relation_changed(
             self, event: charm.RelationChangedEvent) -> None:
-        # _ = self.model.get_relation(event.relation.name, event.relation.id)
         rel_id = event.relation.id
 
         # Check whether credentials for a database are available:
         mongo_creds = self._mongodb_consumer.credentials(rel_id)
         if not mongo_creds:
-            LOG.info(
-                "No MongoDB database credentials present in relation. "
-                "Returning now to await their availability.")
             self.unit.status = model.WaitingStatus(
                 "Waiting for MongoDB database credentials.")
             return
-        LOG.info(
-            "Current MongoDB database creds provided by relation are: %s",
-            mongo_creds)
 
         # Check whether the databases were created:
         databases = self._mongodb_consumer.databases(rel_id)
         if not databases:
-            LOG.info(
-                "No MongoDB database currently present in relation. "
-                "Requesting creation now.")
             self._mongodb_consumer.new_database()
             self.unit.status = model.WaitingStatus(
                 "Waiting for MongoDB database creation.")
             return
-        LOG.info(
-            "Current MongoDB databases provided by the relation are: %s",
-            databases)
-        # NOTE(aznashwan): we hackily add the databases in here too:
-        mongo_creds['databases'] = databases
-        # NOTE: We serialize the creds into JSON here to avoid having to
-        # process the `self._stored.mongodb_credentials_json` (which will
-        # be of the unserializable `StoredDict` type) later:
-        self._stored.mongodb_credentials_json = json.dumps(mongo_creds)
 
+        get_creds = legend_database.get_database_connection_from_mongo_data
+        legend_database_creds = get_creds(mongo_creds, databases)
+        if not legend_database_creds:
+            self.unit.status = model.BlockedStatus(
+                "Failed to process MongoDB connection data for Legend DB "
+                "format. Please review the debug-log for full details.")
+            return
+        logger.debug(
+            "Current Legend MongoDB creds provided by the relation are: %s",
+            legend_database_creds)
+
+        # NOTE: we store/load the creds as JSON to avoid dealing with
+        # the various wrapper types like `StoredDict`
+        self._stored.legend_db_conn_json = json.dumps(
+            legend_database_creds)
         self.unit.status = model.ActiveStatus(
             "Ready to be related to Legend components.")
 
-    @_logged_charm_entry_point
     def _on_legend_db_relation_joined(self, event: charm.RelationJoinedEvent):
-        mongo_creds = json.loads(str(self._stored.mongodb_credentials_json))
+        mongo_creds = json.loads(str(self._stored.legend_db_conn_json))
         if not mongo_creds:
             self.unit.status = model.BlockedStatus(
                 "MongoDB relation is required to pass on creds to Legend "
                 "components.")
             return
 
-        rel = event.relation
-        rel.data[self.app]["legend-db-connection"] = json.dumps(
-            mongo_creds)
-        LOG.debug(
-            "###### Returned following JSON data for DB connection "
-            "as part of relation: %s", mongo_creds)
+        if not legend_database.set_legend_database_creds_in_relation_data(
+                event.relation.data[self.app], mongo_creds):
+            self.unit.status = model.BlockedStatus(
+                "Failed to set creds in Legend DB relation: %s" % mongo_creds)
+            return
 
-    @_logged_charm_entry_point
     def _on_legend_db_relation_changed(
             self, event: charm.RelationChangedEvent):
         pass

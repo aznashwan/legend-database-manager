@@ -1,7 +1,7 @@
 # Copyright 2021 Canonical
 # See LICENSE file for licensing details.
 
-name: legend-database-manager
+name: finos-legend-db-k8s
 display-name: FINOS Legend Database Manager
 description: |
   Charm which manages MongoDB database creation and sharing for Legend components.

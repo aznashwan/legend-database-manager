@@ -24,10 +24,10 @@ provides:
 # workload (all actions are within the charm code itself), we are forced to
 # deploy a dummy workload container:
 containers:
-  dbman-noop:
-    resource: dbamn-noop-image
+  legend-db:
+    resource: legend-db-image
 
 resources:
-  dbamn-noop-image:
+  legend-db-image:
     type: oci-image
     description: OCI image for the no-op container.

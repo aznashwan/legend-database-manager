@@ -6,7 +6,6 @@ import logging
 
 from ops import framework
 
-
 # The unique Charmhub library identifier, never change it
 LIBID = "431732f8afb641a3a5a38e5c5d01ee11"
 

@@ -6,14 +6,9 @@
 
 import logging
 
-from ops import charm
-from ops import framework
-from ops import main
-from ops import model
-
-from charms.mongodb_k8s.v0 import mongodb
 from charms.finos_legend_db_k8s.v0 import legend_database
-
+from charms.mongodb_k8s.v0 import mongodb
+from ops import charm, framework, main, model
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +17,7 @@ LEGEND_DB_RELATION_NAME = "legend-db"
 
 class LegendDatabaseManagerCharm(charm.CharmBase):
     """Charm class which exposes the MongoDB it is related to to the
-    FINOS Legend Charmed Operators. """
+    FINOS Legend Charmed Operators."""
 
     _stored = framework.StoredState()
 
@@ -41,32 +36,26 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
         self._legend_db_consumer = legend_database.LegendDatabaseConsumer(self)
 
         # Mongo relation lifecycle events:
-        self.framework.observe(
-            self.on["db"].relation_joined,
-            self._on_db_relation_joined)
-        self.framework.observe(
-            self.on["db"].relation_changed,
-            self._on_db_relation_changed)
+        self.framework.observe(self.on["db"].relation_joined, self._on_db_relation_joined)
+        self.framework.observe(self.on["db"].relation_changed, self._on_db_relation_changed)
 
         # Legend component relation events:
         self.framework.observe(
-            self.on[LEGEND_DB_RELATION_NAME].relation_joined,
-            self._on_legend_db_relation_joined)
+            self.on[LEGEND_DB_RELATION_NAME].relation_joined, self._on_legend_db_relation_joined
+        )
         self.framework.observe(
-            self.on[LEGEND_DB_RELATION_NAME].relation_changed,
-            self._on_legend_db_relation_changed)
+            self.on[LEGEND_DB_RELATION_NAME].relation_changed, self._on_legend_db_relation_changed
+        )
 
         # Set blocked status until MongoDB is realted:
         if not self.unit.status:
-            self.unit.status = model.BlockedStatus(
-                "requires relating to: mongodb-k8s")
+            self.unit.status = model.BlockedStatus("requires relating to: mongodb-k8s")
 
     def _set_stored_defaults(self) -> None:
         self._stored.set_default(log_level="DEBUG")
 
     def _on_install(self, event: charm.InstallEvent):
-        self.unit.status = model.BlockedStatus(
-            "requires relating to: mongodb-k8s")
+        self.unit.status = model.BlockedStatus("requires relating to: mongodb-k8s")
 
     def _on_config_changed(self, _) -> None:
         # NOTE(aznashwan): this charm does not yet have any config options:
@@ -82,29 +71,27 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
         """
         for relation in self.model.relations[LEGEND_DB_RELATION_NAME]:
             if not legend_database.set_legend_database_creds_in_relation_data(
-                    relation.data[self.app], legend_database_creds):
+                relation.data[self.app], legend_database_creds
+            ):
                 return model.BlockedStatus(
-                    "failed to set creds in legend db relation: %s" % (
-                        relation.id))
+                    "failed to set creds in legend db relation: %s" % (relation.id)
+                )
         return None
 
-    def _on_db_relation_changed(
-            self, event: charm.RelationChangedEvent) -> None:
+    def _on_db_relation_changed(self, event: charm.RelationChangedEvent) -> None:
         rel_id = event.relation.id
 
         # Check whether credentials for a database are available:
         mongo_creds = self._mongodb_consumer.credentials(rel_id)
         if not mongo_creds:
-            self.unit.status = model.WaitingStatus(
-                "waiting for mongo database credentials")
+            self.unit.status = model.WaitingStatus("waiting for mongo database credentials")
             return
 
         # Check whether the databases were created:
         databases = self._mongodb_consumer.databases(rel_id)
         if not databases:
             self._mongodb_consumer.new_database()
-            self.unit.status = model.WaitingStatus(
-                "waiting for mongo database creation")
+            self.unit.status = model.WaitingStatus("waiting for mongo database creation")
             return
 
         # Fetch the credentials from the relation data:
@@ -113,15 +100,15 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
         if not legend_database_creds:
             self.unit.status = model.BlockedStatus(
                 "failed to process MongoDB connection data for legend db "
-                "format, please review the debug-log for full details")
+                "format, please review the debug-log for full details"
+            )
             return
         logger.debug(
-            "Current Legend MongoDB creds provided by the relation are: %s",
-            legend_database_creds)
+            "Current Legend MongoDB creds provided by the relation are: %s", legend_database_creds
+        )
 
         # Propagate the DB creds to all relating Legend services:
-        possible_blocked_status = self._set_legend_db_creds_in_relations(
-            legend_database_creds)
+        possible_blocked_status = self._set_legend_db_creds_in_relations(legend_database_creds)
         if possible_blocked_status:
             self.unit.status = possible_blocked_status
             return
@@ -131,8 +118,7 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
     def _on_legend_db_relation_joined(self, event: charm.RelationJoinedEvent):
         pass
 
-    def _on_legend_db_relation_changed(
-            self, event: charm.RelationChangedEvent):
+    def _on_legend_db_relation_changed(self, event: charm.RelationChangedEvent):
         pass
 
 

@@ -6,9 +6,10 @@
 import unittest
 from unittest.mock import Mock
 
-from charm import DatabaseManagerCharm
 from ops.model import ActiveStatus
 from ops.testing import Harness
+
+from charm import DatabaseManagerCharm
 
 
 class TestCharm(unittest.TestCase):

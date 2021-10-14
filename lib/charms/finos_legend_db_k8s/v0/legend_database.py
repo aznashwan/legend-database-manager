@@ -1,6 +1,8 @@
 # Copyright 2021 Canonical
 # See LICENSE file for licensing details.
 
+"""Module defining Legend DB consumer class and helpers."""
+
 import json
 import logging
 
@@ -14,7 +16,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 3
 
 LEGEND_DB_RELATION_DATA_KEY = "legend-db-connection"
 REQUIRED_LEGEND_DATABASE_CREDENTIALS = [
@@ -118,7 +120,8 @@ def set_legend_database_creds_in_relation_data(relation_data, creds):
 
 def _validate_legend_database_credentials(creds):
     """Returns True/False depending on whether the provided Legend
-    database credentials dict contains all the required fields."""
+    database credentials dict contains all the required fields.
+    """
     if not isinstance(creds, dict) or any([
             not isinstance(creds.get(k), str) for k in REQUIRED_LEGEND_DATABASE_CREDENTIALS]):
         return False
@@ -126,6 +129,7 @@ def _validate_legend_database_credentials(creds):
 
 
 class LegendDatabaseConsumer(framework.Object):
+    """Class which facilitates reading Legend DB creds from relation data."""
     def __init__(self, charm, relation_name="legend-db"):
         super().__init__(charm, relation_name)
         self.charm = charm
@@ -157,8 +161,6 @@ class LegendDatabaseConsumer(framework.Object):
                 "No relation of name '%s' and ID '%s' was found.",
                 self.relation_name, relation_id)
             return {}
-        print("### Rel data: %s" % relation.data)
-        print("### Rel appe: %s" % relation.app)
         relation_data = relation.data[relation.app]
 
         creds_data = relation_data.get(LEGEND_DB_RELATION_DATA_KEY, "{}")

@@ -2,7 +2,7 @@
 # Copyright 2021 Canonical
 # See LICENSE file for licensing details.
 
-""" Module defining a Charm providing database management for FINOS Legend. """
+"""Module defining a Charm providing database management for FINOS Legend."""
 
 import logging
 
@@ -17,8 +17,8 @@ LEGEND_DB_RELATION_NAME = "legend-db"
 
 
 class LegendDatabaseManagerCharm(charm.CharmBase):
-    """Charm class which exposes the MongoDB it is related to to the
-    FINOS Legend Charmed Operators."""
+    """Charm class which exposes the MongoDB it is related to to the FINOS
+    Legend Charmed Operators."""
 
     _stored = framework.StoredState()
 
@@ -38,9 +38,11 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
 
         # Mongo relation lifecycle events:
         self.framework.observe(
-            self.on[MONGODB_RELATION_NAME].relation_joined, self._on_db_relation_joined)
+            self.on[MONGODB_RELATION_NAME].relation_joined, self._on_db_relation_joined
+        )
         self.framework.observe(
-            self.on[MONGODB_RELATION_NAME].relation_changed, self._on_db_relation_changed)
+            self.on[MONGODB_RELATION_NAME].relation_changed, self._on_db_relation_changed
+        )
 
         # Legend component relation events:
         self.framework.observe(

@@ -7,14 +7,14 @@ import logging
 from ops import framework
 
 # The unique Charmhub library identifier, never change it
-LIBID = "431732f8afb641a3a5a38e5c5d01ee11"
+LIBID = "02ed64badd5941c5acfdae546b0f79a2"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 0
+LIBPATCH = 1
 
 REQUIRED_LEGEND_DATABASE_CREDENTIALS = [
     "username", "password", "database", "uri"]

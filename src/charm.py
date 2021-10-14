@@ -7,11 +7,12 @@
 import logging
 
 from charms.finos_legend_db_k8s.v0 import legend_database
-from charms.mongodb_k8s.v0 import mongodb
+from charms.mongodb_k8s.v0.mongodb import MongoConsumer
 from ops import charm, framework, main, model
 
 logger = logging.getLogger(__name__)
 
+MONGODB_RELATION_NAME = "db"
 LEGEND_DB_RELATION_NAME = "legend-db"
 
 
@@ -30,14 +31,16 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
         self.framework.observe(self.on.install, self._on_install)
 
         # MongoDB consumer setup:
-        self._mongodb_consumer = mongodb.MongoConsumer(self, "db")
+        self._mongodb_consumer = MongoConsumer(self, MONGODB_RELATION_NAME)
 
         # LDB library setup:
         self._legend_db_consumer = legend_database.LegendDatabaseConsumer(self)
 
         # Mongo relation lifecycle events:
-        self.framework.observe(self.on["db"].relation_joined, self._on_db_relation_joined)
-        self.framework.observe(self.on["db"].relation_changed, self._on_db_relation_changed)
+        self.framework.observe(
+            self.on[MONGODB_RELATION_NAME].relation_joined, self._on_db_relation_joined)
+        self.framework.observe(
+            self.on[MONGODB_RELATION_NAME].relation_changed, self._on_db_relation_changed)
 
         # Legend component relation events:
         self.framework.observe(

@@ -91,7 +91,13 @@ class TestCharm(unittest.TestCase):
         self.harness.begin_with_initial_hooks()
 
         self.assertIsInstance(self.harness.charm.unit.status, model.ActiveStatus)
-        mongo_consumer_mock.credentials.assert_called_once_with(mongo_rel_id)
-        mongo_consumer_mock.databases.assert_called_once_with(mongo_rel_id)
-        _get_rel_creds_mock.assert_called_once_with(mongodb_test_creds, [testing_database])
-        _set_rel_cred_mock.assert_called_once_with({}, mongodb_test_creds)
+        mongo_consumer_mock.credentials.assert_has_calls(
+            # NOTE(aznashwan): the call from the mongo relation-changed and legend
+            # relation-joined could come in any order:
+            [mock.call(mongo_rel_id), mock.call(None)], any_order=True)
+        mongo_consumer_mock.databases.assert_has_calls(
+            [mock.call(None), mock.call(mongo_rel_id)], any_order=True)
+        _get_rel_creds_mock.assert_has_calls([
+            mock.call(mongodb_test_creds, [testing_database])] * 2)
+        _set_rel_cred_mock.assert_has_calls([
+            mock.call({}, mongodb_test_creds)] * 2, any_order=True)

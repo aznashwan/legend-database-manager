@@ -59,7 +59,7 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
     def _set_stored_defaults(self) -> None:
         self._stored.set_default(log_level="DEBUG")
 
-    def _on_install(self, event: charm.InstallEvent):
+    def _on_install(self, _: charm.InstallEvent):
         self.unit.status = model.BlockedStatus("requires relating to: mongodb-k8s")
 
     def _on_config_changed(self, _) -> None:
@@ -69,48 +69,66 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
     def _on_db_relation_joined(self, event: charm.RelationJoinedEvent):
         pass
 
+    def _set_legend_db_creds_in_relation(self, legend_database_creds, relation):
+        """Attempts to add the given Database creds to the given relation's data.
+        Returns a `model.BlockedStatus` if it was unable to set the rel data.
+        """
+        if not legend_database.set_legend_database_creds_in_relation_data(
+            relation.data[self.app], legend_database_creds
+        ):
+            return model.BlockedStatus(
+                "failed to set creds in legend db relation: %s" % (relation.id)
+            )
+        return None
+
     def _set_legend_db_creds_in_relations(self, legend_database_creds):
         """Attempts to add the given Database creds to the relation data
         of all related Legend services.
         Returns a `model.BlockedStatus` if it was unable to set the rel data.
         """
         for relation in self.model.relations[LEGEND_DB_RELATION_NAME]:
-            if not legend_database.set_legend_database_creds_in_relation_data(
-                relation.data[self.app], legend_database_creds
-            ):
-                return model.BlockedStatus(
-                    "failed to set creds in legend db relation: %s" % (relation.id)
-                )
+            possible_blocked_status = self._set_legend_db_creds_in_relation(
+                legend_database_creds, relation
+            )
+            if possible_blocked_status:
+                return possible_blocked_status
         return None
 
-    def _on_db_relation_changed(self, event: charm.RelationChangedEvent) -> None:
-        rel_id = event.relation.id
-
+    def _get_mongo_db_credentials(self, rel_id=None):
+        """Returns the MongoDB creds if a Mongod relation is present or a
+        `model.WaitingStatus` or `model.BlockedStatus` otherwise.
+        """
         # Check whether credentials for a database are available:
         mongo_creds = self._mongodb_consumer.credentials(rel_id)
         if not mongo_creds:
-            self.unit.status = model.WaitingStatus("waiting for mongo database credentials")
-            return
+            return model.WaitingStatus("waiting for mongo database credentials")
 
         # Check whether the databases were created:
         databases = self._mongodb_consumer.databases(rel_id)
         if not databases:
             self._mongodb_consumer.new_database()
-            self.unit.status = model.WaitingStatus("waiting for mongo database creation")
-            return
+            return model.WaitingStatus("waiting for mongo database creation")
 
         # Fetch the credentials from the relation data:
         get_creds = legend_database.get_database_connection_from_mongo_data
         legend_database_creds = get_creds(mongo_creds, databases)
         if not legend_database_creds:
-            self.unit.status = model.BlockedStatus(
+            return model.BlockedStatus(
                 "failed to process MongoDB connection data for legend db "
                 "format, please review the debug-log for full details"
             )
-            return
         logger.debug(
             "Current Legend MongoDB creds provided by the relation are: %s", legend_database_creds
         )
+
+        return legend_database_creds
+
+    def _on_db_relation_changed(self, event: charm.RelationChangedEvent) -> None:
+        rel_id = event.relation.id
+        legend_database_creds = self._get_mongo_db_credentials(rel_id)
+        if isinstance(legend_database_creds, (model.WaitingStatus, model.BlockedStatus)):
+            self.unit.status = legend_database_creds
+            return
 
         # Propagate the DB creds to all relating Legend services:
         possible_blocked_status = self._set_legend_db_creds_in_relations(legend_database_creds)
@@ -121,7 +139,23 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
         self.unit.status = model.ActiveStatus()
 
     def _on_legend_db_relation_joined(self, event: charm.RelationJoinedEvent):
-        pass
+        legend_database_creds = self._get_mongo_db_credentials()
+        if isinstance(legend_database_creds, (model.WaitingStatus, model.BlockedStatus)):
+            logger.warning(
+                "Could not provide Legend MongoDB creds to relation '%s' as none are "
+                "currently available",
+                event.relation.id,
+            )
+            self.unit.status = legend_database_creds
+            return
+
+        # Add the creds to the relation:
+        possible_blocked_status = self._set_legend_db_creds_in_relation(
+            legend_database_creds, event.relation
+        )
+        if possible_blocked_status:
+            self.unit.status = possible_blocked_status
+            return
 
     def _on_legend_db_relation_changed(self, event: charm.RelationChangedEvent):
         pass

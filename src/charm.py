@@ -154,6 +154,7 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
         if possible_blocked_status:
             self.unit.status = possible_blocked_status
             return
+        logger.debug("test")
 
     def _on_legend_db_relation_changed(self, event: charm.RelationChangedEvent):
         pass

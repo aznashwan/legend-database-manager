@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2021 Canonical
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """Module defining a Charm providing database management for FINOS Legend."""
@@ -17,8 +17,7 @@ LEGEND_DB_RELATION_NAME = "legend-db"
 
 
 class LegendDatabaseManagerCharm(charm.CharmBase):
-    """Charm class which exposes the MongoDB it is related to to the FINOS
-    Legend Charmed Operators."""
+    """Charm which shares a MongodDB relation with related Legend Services."""
 
     _stored = framework.StoredState()
 
@@ -71,6 +70,7 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
 
     def _set_legend_db_creds_in_relation(self, legend_database_creds, relation):
         """Attempts to add the given Database creds to the given relation's data.
+
         Returns a `model.BlockedStatus` if it was unable to set the rel data.
         """
         if not legend_database.set_legend_database_creds_in_relation_data(
@@ -82,8 +82,8 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
         return None
 
     def _set_legend_db_creds_in_relations(self, legend_database_creds):
-        """Attempts to add the given Database creds to the relation data
-        of all related Legend services.
+        """Shares the MongoDB creds with all related Lenged services.
+
         Returns a `model.BlockedStatus` if it was unable to set the rel data.
         """
         for relation in self.model.relations[LEGEND_DB_RELATION_NAME]:
@@ -95,9 +95,7 @@ class LegendDatabaseManagerCharm(charm.CharmBase):
         return None
 
     def _get_mongo_db_credentials(self, rel_id=None):
-        """Returns the MongoDB creds if a Mongod relation is present or a
-        `model.WaitingStatus` or `model.BlockedStatus` otherwise.
-        """
+        """Returns MongoDB creds or a `Waiting/BlockedStatus` otherwise."""
         # Check whether credentials for a database are available:
         mongo_creds = self._mongodb_consumer.credentials(rel_id)
         if not mongo_creds:
